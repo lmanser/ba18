@@ -164,11 +164,7 @@ def main():
     # predefined age groups with their boundaries as tuples
     m_classes = {0:(25,37), 1:(48, 50), 2:(51, 64), 3:(65, 75), 4:(76, 85)}
     f_classes = {0:(25,37), 1:(48, 50), 2:(51, 64), 3:(65, 75), 4:(76, 85)}
-    ######
-    #####
-    # MISSING SOME FEATURE IN THIS LIST!
-    #####
-    ######
+
     feature_names = ["age", "gender", "mfcc1_sdc", "mfcc2_sdc", "mfcc3_sdc", "mfcc4_sdc", "mfcc5_sdc", "mfcc6_sdc", "mfcc7_sdc", "mfcc8_sdc", "mfcc9_sdc", "mfcc10_sdc", "mfcc11_sdc", "mfcc12_sdc", "mfcc13_sdc",\
                     "mfcc1_d_sdc", "mfcc2_d_sdc", "mfcc3_d_sdc", "mfcc4_d_sdc", "mfcc5_d_sdc", "mfcc6_d_sdc", "mfcc7_d_sdc", "mfcc8_d_sdc", "mfcc9_d_sdc", "mfcc10_d_sdc", "mfcc11_d_sdc", "mfcc12_d_sdc", "mfcc13_d_sdc", \
                     "mfcc1_dd_sdc", "mfcc2_dd_sdc", "mfcc3_dd_sdc", "mfcc4_dd_sdc", "mfcc5_dd_sdc", "mfcc6_dd_sdc", "mfcc7_dd_sdc", "mfcc8_dd_sdc", "mfcc9_dd_sdc", "mfcc10_dd_sdc", "mfcc11_dd_sdc", "mfcc12_dd_sdc", "mfcc13_dd_sdc", \
