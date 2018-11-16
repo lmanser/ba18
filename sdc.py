@@ -14,9 +14,9 @@ def sdc(mfcc):
     data = mfcc # make a local copy in order to be able to apply changes
     number_of_blocks = data[0,:].size # number of "frames"
     N = data[:,0].size # number of c coefficients
-    d = 2
-    k = 4
+    d = 2 # This will result in a "convolution window" of 5 rows
     step_size = 2*d+1
+    # with this step_size, I am ensuring that every row has been visited once
     while number_of_blocks > step_size: 
         # continue to compute delta coefficients until you don't have enough
         # blocks to continue anymore.
@@ -39,6 +39,8 @@ def sdc(mfcc):
                     # include all vectors within the spread and sum them up as defined 
                     # TODO: check if j*data[i, step+j] is correct (What is hd?, at the moment its missing)
                     try:
+                        # the upper/lower should correspong to the formula given in the paper
+                        # upper = above the division line, lower = below the line
                         upper += j*data[coeff, step+j]
                         lower += j**2
                     except IndexError:
