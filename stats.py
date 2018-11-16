@@ -20,7 +20,11 @@ from matplotlib.ticker import MaxNLocator
 
 class Datasheet(object):
     def __init__(self, filename, male_mapping, female_mapping):
-        self.indexlist = ["age", "gender", "mfcc1", "mfcc2", "mfcc3", "mfcc4", "mfcc5", "mfcc6", "mfcc7", "mfcc8", "mfcc9", "mfcc10", "mfcc11", "speakingrate", "speakingratio", "pitch_mean", "pitch_stdev", "pitch_min", "pitch_max", "pitch_range", "pitch_med", "jit_loc", "jit_loc_abs", "jit_rap", "jit_ppq5", "jit_ddp", "shim_loc", "shim_apq3", "shim_apq5", "shim_apq11", "shim_dda", "hnr", "nhr", "ff1", "ff2", "ff3", "ff4", "f0amp", "f1amp", "f2amp", "f3amp", "f4amp", "l01diff", "vlhr", "stilt", "skurt", "scog", "bandenergylow", "bandenergyhigh", "deltaUV", "meanUV", "varcoUV", "pVO"]
+        self.indexlist = ["age", "gender", "mfcc1_sdc", "mfcc2_sdc", "mfcc3_sdc", "mfcc4_sdc", "mfcc5_sdc", "mfcc6_sdc", "mfcc7_sdc", "mfcc8_sdc", "mfcc9_sdc", "mfcc10_sdc", "mfcc11_sdc", "mfcc12_sdc", "mfcc13_sdc",\
+                        "mfcc1_d_sdc", "mfcc2_d_sdc", "mfcc3_d_sdc", "mfcc4_d_sdc", "mfcc5_d_sdc", "mfcc6_d_sdc", "mfcc7_d_sdc", "mfcc8_d_sdc", "mfcc9_d_sdc", "mfcc10_d_sdc", "mfcc11_d_sdc", "mfcc12_d_sdc", "mfcc13_d_sdc", \
+                        "mfcc1_dd_sdc", "mfcc2_dd_sdc", "mfcc3_dd_sdc", "mfcc4_dd_sdc", "mfcc5_dd_sdc", "mfcc6_dd_sdc", "mfcc7_dd_sdc", "mfcc8_dd_sdc", "mfcc9_dd_sdc", "mfcc10_dd_sdc", "mfcc11_dd_sdc", "mfcc12_dd_sdc", "mfcc13_dd_sdc", \
+                        "pitch_stdev", "pitch_min", "pitch_max", "pitch_range", "pitch_med", "jit_loc", "jit_loc_abs", "jit_rap", "jit_ppq5", "jit_ddp", "shim_loc", "shim_apq3","shim_apq5","shim_dda", "vlhr", "stilt", "skurt", "scog", "bandenergylow","bandenergyhigh","deltaUV","meanUV","varcoUV","speakingrate","speakingratio", \
+                        "ff1", "ff2", "ff3", "ff4", "f1amp", "f2amp", "f3amp", "f4amp", "I12diff", "I23diff", "harmonicity", "f0"]
         self.filename = filename
         self.male_mapping = male_mapping
         self.female_mapping = female_mapping
@@ -28,15 +32,15 @@ class Datasheet(object):
         self.data = self._read_data()
         
     def _read_data(self):
-        df = pd.read_csv(self.filename, names=self.indexlist)
+        df = pd.read_csv(self.filename)
         m_max_index = len(self.male_mapping) - 1
         m_min_age = self.male_mapping["lowerbound"][0]
         m_max_age = self.male_mapping["upperbound"][m_max_index]
         bad_indices = []
-        sel = df[(df["age"] < m_min_age) | (df["age"] > m_max_age)]
-        for i in sel.index:
-            bad_indices.append(i)
-        df = df.drop(set(bad_indices))
+        # sel = df[(df["age"] < m_min_age) | (df["age"] > m_max_age)]
+        # for i in sel.index:
+        #     bad_indices.append(i)
+        # df = df.drop(set(bad_indices))
         ages = df["age"].tolist()
         genders = df["gender"].tolist()
         assert(len(ages)==len(genders))
@@ -46,28 +50,33 @@ class Datasheet(object):
         for i in df.index:
             try:
                 s = df.iloc[i]
-                if s["gender"].strip() == "m":
-                    age_classes.append((i, m_map_rev[s["age"]]))
+                if s["gender"] == 0:
+                    try:
+                        age_classes.append((i, m_map_rev[s["age"]]))
+                    except KeyError:
+                        age_classes.append((i, 1337.0))
                 else:
-                    age_classes.append((i, f_map_rev[s["age"]]))
+                    try:
+                        age_classes.append((i, f_map_rev[s["age"]]))
+                    except KeyError:
+                        age_classes.append((i, 1337.1))
             except IndexError:
                 pass        
         for i, ac in age_classes:
             df.at[i, "age_class"] = ac
         
         for name in df:
-            if name != "gender":
-                df[name] = df[name].astype('float64') 
+            df[name] = df[name].astype('float64')
         return df
         
     def corr(self, method="pearson", gender=None):
         if not gender:
             return self.data.corr(method)
         elif gender == "m":
-            m = self.data.loc[self.data["gender"] == "m"]
+            m = self.data.loc[self.data["gender"] == 0]
             return m.corr(method)
         else:
-            f = self.data.loc[self.data["gender"] == "f"]
+            f = self.data.loc[self.data["gender"] == 1]
             return f.corr(method)            
 
     def __repr__(self):
@@ -267,14 +276,15 @@ def prepare_datafile(filename):
 
 def main():
     APPDATA_PATH = os.getcwd()[:-4] + "appdata/" # assumes this script is in ~/code
-    DATA_PATH = APPDATA_PATH + "t/"
+    DATA_PATH = APPDATA_PATH + "fval/"
     MAPPING_PATH = APPDATA_PATH + "mappings/"
     print(" + loading age class mapping")
     m_mapping = f_mapping = load_class_mapping_pd(MAPPING_PATH + "f_mapping.txt")
-    print(" + preparing datafile")
-    datafile = prepare_datafile(DATA_PATH + "t.txt")
+    # print(" + preparing datafile")
+    # datafile = prepare_datafile(DATA_PATH + "t.txt")
     print(" + setting up datasheet")
-    ds = Datasheet(datafile, m_mapping, f_mapping)
+    ds = Datasheet(DATA_PATH + "extracted_fvals.txt", m_mapping, f_mapping)
+    print(ds)
     print(" + computing pearson correlation")
     p_male, p_female = find_pearson(ds, ds.indexlist[2:])
     
