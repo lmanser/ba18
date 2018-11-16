@@ -28,7 +28,6 @@ class Datasheet(object):
         self.filename = filename
         self.male_mapping = male_mapping
         self.female_mapping = female_mapping
-        # self.labels = self.male_mapping.keys()
         self.data = self._read_data()
         
     def _read_data(self):
