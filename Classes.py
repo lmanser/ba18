@@ -122,13 +122,12 @@ class SpeechRecording(object):
                 return
             else:
                 current_pp = pp
-            subprocess.check_call(['/Applications/Praat.app/Contents/MacOS/Praat', '--run', 'code/featureExtraction.praat', '-25', '2', '0.3', '0', SEGMENT_PATH, EXTRACTION_PATH, str(identification)])
-            """
-            _formanttable.csv
-            _harmtable.csv
-            _pitchtable.csv
-            _rest.csv
-            """
+            try:
+                subprocess.check_call(['/Applications/Praat.app/Contents/MacOS/Praat', '--run', 'code/featureExtraction.praat', '-25', '2', '0.3', '0', SEGMENT_PATH, EXTRACTION_PATH, str(identification)])
+            except subprocess.CalledProcessError:
+                # discard segment if subprocess throws errors due to invalid data
+                print(" ! Segment not processed, due to invalid values\n\t-> Problem in %s" % pp)
+                continue
             rest = CSVhandler(EXTRACTION_PATH + str(identification) + "_rest.csv")
             endings = ["_formanttable.csv", "_harmtable.csv", "_pitchtable.csv"]
             # converting strings to number in order to better handle the dataframes
