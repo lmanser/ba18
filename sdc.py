@@ -10,16 +10,6 @@ import numpy as np
 
 def sdc(mfcc):
     """
-    ∆c(t) = c(t + iP + d) − c(t + iP − d)
-    N: number of mfccs
-    d: time advance/delay
-    r: number of resulting feature vectors
-    P: time shift between consecutive blocks
-        -> number of blocks / total duration
-        probably not necessary, since iP corresponds to a shift in one block per increment of i
-        thus it may be possible to just shift in blocks, instead of computing the actual frame times
-    k: number of blocks whose delta coefficients are concatenated to form the final feature vector
-        -> number of blocks / r
     """
     data = mfcc # make a local copy in order to be able to apply changes
     number_of_blocks = data[0,:].size # number of "frames"
@@ -36,27 +26,26 @@ def sdc(mfcc):
             # of the convoluting window defined by the spread (-d...d)
             # This way, I can gather the first x rows of the array and compute
             # the delta coefficients values for these x rows. After that, I can 
-            # step forward, so that I am at the middle of the next convoluting window
+            # step forward, so that I am at the middle of the next "convoluting window"
             delta_data = []
             for coeff in range(0, N):
                 # calculate delta values for each coefficient
-                # this is done according to:
+                # tried to do this according to:
                 # https://www.researchgate.net/publication/221478246_Selection_of_the_best_set_of_shifted_delta_cepstral_features_in_speaker_verification_using_mutual_information
-                # NB: I don't really know my algorithm is correct, since hd (in formula 1) is not defined in the paper and I don't know what hd is
+                # NB: I don't really know if my algorithm is correct, since hd (in formula 1) is not defined in the paper and I don't know what hd is
                 upper = 0
                 lower = 0
                 for j in range(-d, d+1):
                     # include all vectors within the spread and sum them up as defined 
-                    # TODO: check if j*data[i, step+j] is correct (WHAT IS THAT hd??)
+                    # TODO: check if j*data[i, step+j] is correct (What is hd?, at the moment its missing)
                     try:
                         upper += j*data[coeff, step+j]
                         lower += j**2
                     except IndexError:
                         # in case of an indexError, the index is too large
                         # take a value within the same convoluting window and
-                        # just duplicate the values by this. The resulting error
-                        # is not as bad as inserting the value 0
-                        
+                        # duplicate the values by this. The resulting error
+                        # is not as bad any other value
                         upper += j*data[coeff, 0]
                         lower += j**2
                 r = upper/lower
@@ -64,12 +53,17 @@ def sdc(mfcc):
                 delta_data.append(r)    
                 
             sdc_data.append(delta_data)
+        # bring in correct form by transposing the matrix
         data = np.array(sdc_data).transpose()
         number_of_blocks = data[0,:].size
         
     return data
     
 def combine_data_rows(data):
+    """
+    at this moment, this moment takes the average of the remaining SDC rows.
+    This will always result in a single return value for each dimension.
+    """
     rows, cols = data.shape
     out_data = []
     for r in range(0, rows):
