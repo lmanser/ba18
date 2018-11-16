@@ -122,7 +122,7 @@ class SpeechRecording(object):
                 return
             else:
                 current_pp = pp
-            subprocess.check_call(['/Applications/Praat.app/Contents/MacOS/Praat', '--run', 'code/new_stuff.praat', '-25', '2', '0.3', '0', SEGMENT_PATH, EXTRACTION_PATH, str(identification)])
+            subprocess.check_call(['/Applications/Praat.app/Contents/MacOS/Praat', '--run', 'code/featureExtraction.praat', '-25', '2', '0.3', '0', SEGMENT_PATH, EXTRACTION_PATH, str(identification)])
             """
             _formanttable.csv
             _harmtable.csv
