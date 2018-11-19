@@ -63,7 +63,7 @@ def sdc(mfcc):
     
 def combine_data_rows(data):
     """
-    at this moment, this moment takes the average of the remaining SDC rows.
+    at this moment, this function takes the average of the remaining SDC rows.
     This will always result in a single return value for each dimension.
     """
     rows, cols = data.shape
