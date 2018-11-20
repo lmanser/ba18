@@ -8,6 +8,76 @@ import os
 import librosa
 import numpy as np
 
+def shifted_delta_cepstral(cep, d=5, p=2, k=2):
+    # taken from:
+    # https://projets-lium.univ-lemans.fr/sidekit/_modules/frontend/features.html
+    """
+    Compute the Shifted-Delta-Cepstral features for language identification
+
+    :param cep: matrix of feature, 1 vector per line
+    :param d: represents the time advance and delay for the delta computation
+    :param k: number of delta-cepstral blocks whose delta-cepstral
+       coefficients are stacked to form the final feature vector
+    :param p: time shift between consecutive blocks.
+
+    return: cepstral coefficient concatenated with shifted deltas
+    """
+
+    y = np.r_[np.resize(cep[0, :], (d, cep.shape[1])),
+                 cep,
+                 np.resize(cep[-1, :], (k * 3 + d, cep.shape[1]))]
+
+    delta = compute_delta(y, win=d, method='diff')
+    sdc = np.empty((cep.shape[0], cep.shape[1] * k))
+
+    idx = np.zeros(delta.shape[0], dtype='bool')
+    for ii in range(k):
+        idx[d + ii * p] = True
+    for ff in range(len(cep)):
+        sdc[ff, :] = delta[idx, :].reshape(1, -1)
+        idx = np.roll(idx, 1)
+    return np.hstack((cep, sdc))
+
+
+def compute_delta(features,
+                  win=3,
+                  method='filter',
+                  filt=np.array([.25, .5, .25, 0, -.25, -.5, -.25])):
+    # taken from:
+    # https://projets-lium.univ-lemans.fr/sidekit/_modules/frontend/features.html
+    """features is a 2D-ndarray  each row of features is a a frame
+
+    :param features: the feature frames to compute the delta coefficients
+    :param win: parameter that set the length of the computation window.
+            The size of the window is (win x 2) + 1
+    :param method: method used to compute the delta coefficients
+        can be diff or filter
+    :param filt: definition of the filter to use in "filter" mode, default one
+        is similar to SPRO4:  filt=np.array([.2, .1, 0, -.1, -.2])
+
+    :return: the delta coefficients computed on the original features.
+    """
+    # First and last features are appended to the begining and the end of the
+    # stream to avoid border effect
+    PARAM_TYPE = np.float64
+    x = np.zeros((features.shape[0] + 2 * win, features.shape[1]), dtype=PARAM_TYPE)
+    x[:win, :] = features[0, :]
+    x[win:-win, :] = features
+    x[-win:, :] = features[-1, :]
+
+    delta = np.zeros(x.shape, dtype=PARAM_TYPE)
+
+    if method == 'diff':
+        filt = np.zeros(2 * win + 1, dtype=PARAM_TYPE)
+        filt[0] = -1
+        filt[-1] = 1
+
+    for i in range(features.shape[1]):
+        delta[:, i] = np.convolve(features[:, i], filt)
+
+    return delta[win:-win, :]
+
+
 def sdc(mfcc):
     """
     """
@@ -85,16 +155,18 @@ def main():
     N = 13
     y, sr = librosa.load(p, sampling_rate)
     mfcc = librosa.feature.mfcc(y=y, sr=sr, n_mfcc=N)
-    mfcc_delta = librosa.feature.delta(mfcc)
-    mfcc_deltaDelta = librosa.feature.delta(mfcc, order=2)
-    M = np.concatenate((mfcc,mfcc_delta,mfcc_deltaDelta))
-    data = sdc(M)
-    data = combine_data_rows(data)
+    mfcc = np.transpose(mfcc)
+    print("M", mfcc.shape)
+    data = shifted_delta_cepstral(mfcc)
+    print("D", data.shape)
     print(data)
-    testdata = np.random.random([1,39])
-    print(testdata)
-    testrun = sdc(testdata)
-    print(testrun)
+    # data = sdc(M)
+    # data = combine_data_rows(data)
+    # print(data)
+    # testdata = np.random.random([1,39])
+    # print(testdata)
+    # testrun = sdc(testdata)
+    # print(testrun)
     
 if __name__ == '__main__':
     main()
