@@ -4,7 +4,7 @@
 # date: 06.03.2018
 # Additional Info: python3 (3.6.2) program
 
-from Classes import *
+from Classes import AgeClassifier
 import os
 import re
 import random
@@ -15,6 +15,7 @@ import subprocess
 import time
 import argparse
 import pandas as pd
+from sets import *
 
 def record_speech(wave_name, RECORDING_PATH, chunk=1024, format=pyaudio.paInt16, channels=1, rate=16000, record_seconds=3):
     """
@@ -126,63 +127,6 @@ def process_recording(wave_name, extraction_name, RECORDING_PATH, EXTRACTION_PAT
                     exit()
             c += 1
 
-def add_sample_to_file(filename, prediction, input_row):
-    """
-    add sample value line to file
-
-    in order to fit the format of the training material, the extracted values
-    are joined to a string and written to the file, of which the filename is
-    given.
-
-    :param filename:    name of the file to be written on
-    :type filename:     str
-    :param prediction:  result of the classification or correction of the user
-    :type prediction:   int
-    :param input_row:   array of extracted input values for the given sample
-    :type input_row:    np.ndarray
-    """
-    with open(filename, "a") as f:
-        # concatenate value of prediction with the extracted input values
-        new_sample = [prediction] + input_row[0].tolist()
-        for i in range(0, len(new_sample)):
-            if i > 0:
-                new_sample[i] = float(new_sample[i])
-            new_sample[i] = str(new_sample[i])
-        new_sample = "\n" + ", ".join(new_sample)
-        f.write(new_sample)
-
-def add_new_train_sample(classifier, prediction, age_mapping, input_row):
-    """
-    add new training sample to the training material.
-
-    After predicting the users age, the programm will evaluate it's prediction
-    by asking the user if the prediction was correct. If yes, the data will be
-    stored in the same file as the other training material (subject to change).
-    If no, the user must tell the program how old he/she is. With this data, a
-    new sample can be inserted as training material. At this moment, there is no
-    restriction on how many samples there can be for any given age group.
-
-    :param classifier:  the AgeClassifier used for the prediction
-    :type classifier:   Classes.AgeClassifier
-    :param prediction:  result of the prediction
-    :type prediction:   int
-    :param age_mapping: mapping used for training as well. This helps to find the
-                        correct label for the given age value in case the
-                        prediction was wrong.
-    :type age_mapping:  dict
-    :param input_row:   input values for the prediction i.e. to-be training
-                        values
-    :type input_row:    np.ndarray
-    """
-    if input("Was this prediction correct?\n> ") == "y":
-        add_sample_to_file(classifier.fname_train[0], prediction, input_row)
-    else:
-        # prediction was incorrect, ask user of his/her age in order to construct
-        # a new sample
-        age = int(input("How old are you?\n> "))
-        for i in range(0, max(age_mapping.keys())+1):
-            if age >= age_mapping[i][0] and age <= age_mapping[i][1]:
-                add_sample_to_file(classifier.fname_train[0], i, input_row)
 
 def load_class_mapping_pd(MAPPING_FILE_PATH):
     """
@@ -257,36 +201,33 @@ def main():
     APPDATA_PATH = ROOT_PATH + "appdata/"
     RECORDING_PATH = APPDATA_PATH + "recordings/"
     EXTRACTION_PATH = APPDATA_PATH + "extractions/"
-    MAPPING_FILE_PATH = APPDATA_PATH + "mappings/f_mapping.txt"
+    FEMALE_MAPPING_FILE_PATH = APPDATA_PATH + "mappings/f_mapping.txt"
+    MALE_MAPPING_FILE_PATH = APPDATA_PATH + "mappings/m_mapping.txt"
     recording_name = "rec.wav"
     extraction_name = "ext.txt"
     if args.verbose:
         print("+ loading mapping of age groups from '%s'" % MAPPING_FILE_PATH)
-    age_mapping = load_class_mapping(MAPPING_FILE_PATH)
+    male_age_mapping = load_class_mapping_pd(MALE_MAPPING_FILE_PATH)
+    female_age_mapping = load_class_mapping_pd(FEMALE_MAPPING_FILE_PATH)
     if args.verbose:
         print("+ loaded age mapping: ", age_mapping)
         print("+ setting up AgeClassifier (this may take a few seconds)")
-    c = AgeClassifier(ROOT_PATH, age_mapping)
 
-    if args.norecording:
-            if args.verbose:
-                print("+ --norecording flag given. Sound file will be taken from '%s'" % RECORDING_PATH)
-            input_row = process_recording(recording_name, extraction_name, RECORDING_PATH, EXTRACTION_PATH)
-            prediction, statement = c.predict(input_row)
-            print(statement)
-    else:
-        while input("If you want to record a new sample, please confirm (y)\n(immediately after confirming, you can speak into the microphone to record your speech)\n> ") == "y":
-            record_speech(recording_name, RECORDING_PATH)
-            input_row = process_recording(recording_name, extraction_name, RECORDING_PATH, EXTRACTION_PATH)
-            prediction, statement = c.predict(input_row)
-            print(statement)
-            add_new_train_sample(c, prediction, age_mapping, input_row)
+    m_c_m = AgeClassifier(ROOT_PATH, male_age_mapping, modelname="male_m.joblib", features=MFCC_SET, gender="m")
+    m_c_s = AgeClassifier(ROOT_PATH, male_age_mapping, modelname="male_s.joblib", features=SPECTRAL_SET, gender="m")
+    m_c_r = AgeClassifier(ROOT_PATH, male_age_mapping, modelname="male_r.joblib", features=RHYTHM_SET, gender="m")
+    m_c_m_s = AgeClassifier(ROOT_PATH, male_age_mapping, modelname="male_m_s.joblib", features=MFCC_SET+SPECTRAL_SET, gender="m")
+    m_c_s_r = AgeClassifier(ROOT_PATH, male_age_mapping, modelname="male_s_r.joblib", features=SPECTRAL_SET+RHYTHM_SET, gender="m")
+    m_c_r_m = AgeClassifier(ROOT_PATH, male_age_mapping, modelname="male_r_m.joblib", features=RHYTHM_SET+MFCC_SET, gender="m")
+    m_c_r_m_s = AgeClassifier(ROOT_PATH, male_age_mapping, modelname="male_r_m_s.joblib", features=RHYTHM_SET+MFCC_SET+SPECTRAL_SET, gender="m")
 
-    if args.evaluate:
-        c.print_accuracy_score()
-        c.plot_confusion_matrix()
-        c.plot_age_group_sizes()
-
+    f_c_m = AgeClassifier(ROOT_PATH, female_age_mapping, modelname="female_m.joblib", features=MFCC_SET, gender="f")
+    f_c_s = AgeClassifier(ROOT_PATH, female_age_mapping, modelname="female_s.joblib", features=SPECTRAL_SET, gender="f")
+    f_c_r = AgeClassifier(ROOT_PATH, female_age_mapping, modelname="female_r.joblib", features=RHYTHM_SET, gender="f")
+    f_c_m_s = AgeClassifier(ROOT_PATH, female_age_mapping, modelname="female_m_s.joblib", features=MFCC_SET+SPECTRAL_SET, gender="f")
+    f_c_s_r = AgeClassifier(ROOT_PATH, female_age_mapping, modelname="female_s_r.joblib", features=SPECTRAL_SET+RHYTHM_SET, gender="f")
+    f_c_r_m = AgeClassifier(ROOT_PATH, female_age_mapping, modelname="female_r_m.joblib", features=RHYTHM_SET+MFCC_SET, gender="f")
+    f_c_r_m_s = AgeClassifier(ROOT_PATH, female_age_mapping, modelname="female_r_m_s.joblib", features=RHYTHM_SET+MFCC_SET+SPECTRAL_SET, gender="f")
 
 if __name__ == '__main__':
     main()
