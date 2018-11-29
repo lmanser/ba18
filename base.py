@@ -16,6 +16,7 @@ import time
 import numpy as np
 import matplotlib.pyplot as plt
 import argparse
+from stats import reverse_mapping
 
 def load_main_data(DB_PATH):
     """
@@ -94,41 +95,74 @@ def load_additional_data(DB_PATH):
                         recordings.append(recording)
     return recordings
 
+def update_header(filepath, header):
+    out_lines = []
+    with open(filepath, "r+") as f:
+        lines = f.readlines()
+        lines[0] = ",".join(header) + "\n"
+        out_lines = lines
+    with open(filepath, "w") as fout:
+        fout.writelines(out_lines)
 
-def gather_training_data(filepath, TRAIN_PATH, TEST_PATH, m_classes, f_classes):
+def add_age_class_to_data(filepath, age_mapping):
+    rev_age_mapping = reverse_mapping(age_mapping)
+    df = pd.read_csv(filepath)
+    age_classes = []
+    for i in df.index:
+        try:
+            s = df.iloc[i]
+            if s["gender"] == 0:
+                try:
+                    age_classes.append((i, rev_age_mapping[s["age"]]))
+                except KeyError:
+                    age_classes.append((i, 1337.0))
+            else:
+                try:
+                    age_classes.append((i, rev_age_mapping[s["age"]]))
+                except KeyError:
+                    age_classes.append((i, 1337.1))
+        except IndexError:
+            pass
+
+    for i, ac in age_classes:
+        df.at[i, "age_class"] = ac
+
+    df.to_csv(filepath, index=False)
+
+def collect_testing_training_data(filepath, MALE_TRAIN_PATH, MALE_TEST_PATH, FEMALE_TRAIN_PATH, FEMALE_TEST_PATH):
     df = pd.read_csv(filepath)
     # split data by gender
     male = df.loc[df["gender"] == 0]
     female = df.loc[df["gender"] == 1]
     
     # MALE
-    m_array = male.values
-    n_m = m_array.shape[0]
-    # the number of test samples is 20% of the total number of samples
+    n_m = male.shape[0]
     n_test = int(0.2 * n_m)
-    assert(n_m > n_test)
-    # sample random row indices in order to filter the out of the training array
-    idx = np.random.randint(n_m, size=n_test)
-    male_test = m_array[idx,:]
-    difidx = [i for i in range(0, n_m) if i not in idx]
-    male_train = m_array[difidx,:]
-    
+    male_test = male.sample(n=n_test)
+    test_rows = []
+    for row in male_test.iterrows():
+        test_rows.append(row[0])
+    male_train = male.drop(test_rows)
     # FEMALE
-    f_array = female.values
-    n_f = f_array.shape[0]
-    # the number of test samples is 20% of the total number of samples
+    
+    n_f = female.shape[0]
     n_test = int(0.2 * n_f)
-    assert(n_f > n_test)
-    # sample random row indices in order to filter the out of the training array
-    idx = np.random.randint(n_f, size=n_test)
-    female_test = f_array[idx,:]
-    difidx = [i for i in range(0, n_f) if i not in idx]
-    female_train = f_array[difidx,:]
-    
-    print(male_test, male_train, female_test, female_train)
-    
-    exit()
-    return df
+    female_test = female.sample(n=n_test)
+    test_rows = []
+    for row in female_test.iterrows():
+        test_rows.append(row[0])
+    female_train = female.drop(test_rows)
+
+    print(" + writing testing and training files")
+    print(" +   -> %s" % MALE_TRAIN_PATH)
+    male_train.to_csv(MALE_TRAIN_PATH, index=False)
+    print(" +   -> %s" % MALE_TEST_PATH)
+    male_test.to_csv(MALE_TEST_PATH, index=False)
+    print(" +   -> %s" % FEMALE_TRAIN_PATH)
+    female_train.to_csv(FEMALE_TRAIN_PATH, index=False)
+    print(" +   -> %s" % FEMALE_TEST_PATH)
+    female_test.to_csv(FEMALE_TEST_PATH, index=False)
+    print(" + collected testing and training data")
 
 
 def main():
@@ -165,12 +199,6 @@ def main():
     m_classes = {0:(25,37), 1:(48, 50), 2:(51, 64), 3:(65, 75), 4:(76, 85)}
     f_classes = {0:(25,37), 1:(48, 50), 2:(51, 64), 3:(65, 75), 4:(76, 85)}
 
-    feature_names = ["age", "gender", "mfcc1_sdc", "mfcc2_sdc", "mfcc3_sdc", "mfcc4_sdc", "mfcc5_sdc", "mfcc6_sdc", "mfcc7_sdc", "mfcc8_sdc", "mfcc9_sdc", "mfcc10_sdc", "mfcc11_sdc", "mfcc12_sdc", "mfcc13_sdc",\
-                    "mfcc1_d_sdc", "mfcc2_d_sdc", "mfcc3_d_sdc", "mfcc4_d_sdc", "mfcc5_d_sdc", "mfcc6_d_sdc", "mfcc7_d_sdc", "mfcc8_d_sdc", "mfcc9_d_sdc", "mfcc10_d_sdc", "mfcc11_d_sdc", "mfcc12_d_sdc", "mfcc13_d_sdc", \
-                    "mfcc1_dd_sdc", "mfcc2_dd_sdc", "mfcc3_dd_sdc", "mfcc4_dd_sdc", "mfcc5_dd_sdc", "mfcc6_dd_sdc", "mfcc7_dd_sdc", "mfcc8_dd_sdc", "mfcc9_dd_sdc", "mfcc10_dd_sdc", "mfcc11_dd_sdc", "mfcc12_dd_sdc", "mfcc13_dd_sdc", \
-                    "pitch_stdev", "pitch_min", "pitch_max", "pitch_range", "pitch_med", "jit_loc", "jit_loc_abs", "jit_rap", "jit_ppq5", "jit_ddp", "shim_loc", "shim_apq3","shim_apq5","shim_dda", "vlhr", "stilt", "skurt", "scog", "bandenergylow","bandenergyhigh","deltaUV","meanUV","varcoUV","speakingrate","speakingratio", "pVO" \
-                    "ff1", "ff2", "ff3", "ff4", "f1amp", "f2amp", "f3amp", "f4amp", "I12diff", "I23diff", "harmonicity", "f0"]
-    print(len(feature_names))
     os.chdir("..")
     ROOT_PATH = os.getcwd() + "/"
     DB_PATH = ROOT_PATH + "AgeingDatabaseReleaseII/"
@@ -198,6 +226,7 @@ def main():
             print(" + loading additional data")
             additional_data = load_additional_data(DB_PATH)
             data = main_data + additional_data
+            header = []
             try:
                 os.mkdir(MAPPING_PATH)
             except FileExistsError:
@@ -224,31 +253,32 @@ def main():
                 with open(PROGRESS_FILE_PATH, "w") as progress:
                     print(" ! resume flag was not chosen, the old progress status will be deleted")
                 
-            # fval_filepath = FVAL_PATH + "out_" + str(time.time())[5:10] + ".txt"
             fval_filepath = FVAL_PATH + "extracted_fvals.txt"
             # create new empty file in order to have a clean start for the newly
             # extracted feature values
             if not args.resume:
                 with open(fval_filepath, "w") as fval_file:
-                    fval_file.write(",".join(feature_names) + "\n")
+                    fval_file.write("--UNDER CONSTRUCTION-- --UNDER CONSTRUCTION-- --UNDER CONSTRUCTION--\n")
                     print(" ! generated new feature value file, because the old one was not clean")
 
             for rec in data:
-            # for rec in data:
                 print(" + handling %s" % rec.path())
                 if args.resume:
-                    rec.extract_features(3, fval_filepath, SEGMENT_PATH, EXTRACTION_PATH, PROGRESS_PATH, PROGRESS_FILE_PATH, processed_recordings)
+                    header = rec.extract_features(3, fval_filepath, SEGMENT_PATH, EXTRACTION_PATH, PROGRESS_PATH, PROGRESS_FILE_PATH, processed_recordings)
                 else:
-                    rec.extract_features(3, fval_filepath, SEGMENT_PATH, EXTRACTION_PATH, PROGRESS_PATH, PROGRESS_FILE_PATH)
+                    header = rec.extract_features(3, fval_filepath, SEGMENT_PATH, EXTRACTION_PATH, PROGRESS_PATH, PROGRESS_FILE_PATH)
+
             print(" + extracted features")
+            print(" + updating header of %s" % fval_filepath)
+            update_header(fval_filepath, header)
             print(" + gathering testing and training data for each gender")
-            print(gather_training_data(fval_filepath, TRAIN_PATH, TEST_PATH, m_classes, f_classes))
-            exit()
             # split data, 80 percent for training, 20 percent for testing
             # rounded to the nearest whole number, since there are no half lines
+            add_age_class_to_data(fval_filepath)
+            collect_testing_training_data(fval_filepath, MALE_TRAIN_PATH, MALE_TEST_PATH, FEMALE_TRAIN_PATH, FEMALE_TEST_PATH)
+
             # reset appdata i.e. remove ~/segments/  and ~/ext/ once the files
             # were analyzed. These files will no longer be of any use.
-            # rmtree(APPDATA_PATH + "t/")
             rmtree(SEGMENT_PATH)
             rmtree(APPDATA_PATH + "ext/")
             end_t = time.time()
