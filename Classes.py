@@ -16,9 +16,35 @@ from shutil import rmtree
 import matplotlib.pyplot as plt
 from sklearn.preprocessing import StandardScaler
 from sklearn.neural_network import MLPClassifier
+from sklearn import svm
+from sklearn.model_selection import train_test_split, GridSearchCV
 from sklearn.metrics import confusion_matrix, accuracy_score, classification_report
 import librosa
-from sdc import *
+import sidekit
+import time
+from joblib import dump, load
+
+
+def reverse_mapping(mapping):
+    d = {}
+    for index in mapping.index:
+        for age in range(mapping["lowerbound"].get(index), mapping["upperbound"].get(index)+1):
+            d[age] = index
+    return d
+
+def make_header(indexmap, ignore_list):
+    header = []
+    for name, numbers in indexmap.items():
+        if name not in ignore_list:
+            lowest_number = numbers[0]
+            for nr in numbers:
+                i = nr - lowest_number + 1
+                fname = name + "_sdc_" + str(i)
+                header.append(fname)
+        else:
+            header.append(name)
+    return header
+
 
 class CSVhandler(object):
     def __init__(self, csv_filename):
@@ -35,25 +61,32 @@ class CSVhandler(object):
             for n in list(df):
                 try:
                     l = df.loc[df[n].map(str)=="--undefined--"].index
-                    df.drop(l , inplace=True)
-                    
+                    df.drop(l, inplace=True)
                 except KeyError:
-                    # no undefined found?
                     pass
             df = df.astype(type)
         return df
             
-    def sdc(self, measurement):
+    def apply_sdc(self, measurement, indexmap, mode="mean"):
         data = self.df[measurement].values
         data = np.reshape(data, (-1, 1))
-        data = np.transpose(data)
-        data = combine_data_rows(sdc(data))
-        return data
+        sdc = sidekit.shifted_delta_cepstral(data, d=2, p=3, k=7)
+        if mode == "mean":
+            sdc_data = np.mean(sdc, axis=0).tolist()
+        # in case variance is what I want to extract as well, I could do smth here
+        elif mode == "variance":
+            sdc_data = np.var(sdc, axis=0).tolist()
+        # update indexmap in order to find the correct columns later on
+        cols = len(sdc_data)
+        first_index = max(map(max, indexmap.values())) + 1
+        indexmap[measurement] = [i for i in range(first_index, first_index + cols)]
+        return sdc_data
     
     def tolist(self):
         # since the list is nested, I remove the nesting my accessing the first
         # and only list inside the outer list
         return self.df.values.tolist()[0]
+
 
 class SpeechRecording(object):
     """
@@ -110,12 +143,13 @@ class SpeechRecording(object):
         except FileExistsError:
             rmtree(SEGMENT_PATH)
             os.mkdir(SEGMENT_PATH)
-        # if resume-flag is not given, delete the existing "progress" status, and start with
-        # a new one
-                        
+        # if resume-flag is not given, delete the existing "progress" status
+        # and start with a new one
+        indexmap = {}
         segments = self.segment_wave(interval, SEGMENT_PATH)
         all_vals = []
         current_pp = ""
+        header = None
         # gather all data and set up correct table for each segment
         for identification, age, gender, p, pp in segments:
             if pp in processed_recordings:
@@ -126,32 +160,46 @@ class SpeechRecording(object):
                 subprocess.check_call(['/Applications/Praat.app/Contents/MacOS/Praat', '--run', 'code/featureExtraction.praat', '-25', '2', '0.3', '0', SEGMENT_PATH, EXTRACTION_PATH, str(identification)])
             except subprocess.CalledProcessError:
                 # discard segment if subprocess throws errors due to invalid data
-                print(" ! Segment not processed, due to invalid values\n\t-> Problem in %s" % pp)
+                print(" ! Segment not processed, due to invalid values -> Problem in '...%s'" % pp[-10:])
                 continue
-            rest = CSVhandler(EXTRACTION_PATH + str(identification) + "_rest.csv")
-            endings = ["_formanttable.csv", "_harmtable.csv", "_pitchtable.csv"]
+            endings = ["_formanttable.csv", "_harmtable.csv", "_pitchtable.csv", "_rest.csv", "_spectable.csv"]
             # converting strings to number in order to better handle the dataframes
             if gender == "m" or gender == "male":
                 gender = 0
             else:
                 gender = 1
+            indexmap = {"age":[0], "gender":[1]}
+            ignore_list = ["age", "gender"]
             feature_values = [age, gender]
-            # calculate mfccs with librosa
+            # calculate SDCs via MFCCs
             y, sr = librosa.load(p)
-            mfcc = librosa.feature.mfcc(y=y, sr=sr, n_mfcc=13)
-            mfcc_delta = librosa.feature.delta(mfcc)
-            mfcc_deltaDelta = librosa.feature.delta(mfcc, order=2)
-            M = np.concatenate((mfcc,mfcc_delta,mfcc_deltaDelta))
-            mfcc_data = combine_data_rows(sdc(M))
-            feature_values += mfcc_data
-            feature_values += rest.tolist()[1:] # removing "soundname" by doing this
+            mfcc = sidekit.mfcc(y)[0]
+            mfcc_delta = sidekit.compute_delta(mfcc)
+            mfcc_delta_delta = sidekit.compute_delta(mfcc_delta)
+            M = np.concatenate((mfcc,mfcc_delta,mfcc_delta_delta), axis=1)
+            # computing SDCs with the given parameter
+            # X-1-3-7
+            sdc = sidekit.shifted_delta_cepstral(M, d=1, p=3, k=7)
+            sdc_data_mean = np.mean(sdc, axis=0).tolist()
+            # also possible to include the variance matrix
+            # sdc_data_var = np.var(sdc, axis=0).tolist()
+            indexmap["mfcc_mean"] = [i for i in range(2,2+len(sdc_data_mean))]
+            feature_values += sdc_data_mean
             # extract and add the other features to the segmental feature data
+            # procedure for ending "_rest.csv"
             for ending in endings:
                 d = CSVhandler(EXTRACTION_PATH + str(identification) + ending)
-                for f in list(d.df):
-                    feature_values.append(d.sdc(f)[0])
+                if ending != "_rest.csv":
+                    for f in list(d.df):
+                        feature_values += d.apply_sdc(f, indexmap)
+                else:
+                    for f in list(d.df):
+                        ignore_list.append(f)
+                        if f != "soundname":
+                            indexmap[f] = [0]
+                            feature_values.append(d.df[f].values[0])
+            header = make_header(indexmap, ignore_list)
             all_vals.append(feature_values)
-            
         
         with open(outfile_path, "a+") as out_file:
             for line in all_vals:
@@ -161,6 +209,8 @@ class SpeechRecording(object):
         # add the processed recording to the progress file
         with open(PROGRESS_FILE_PATH, "a+") as prg_file:
             prg_file.write(current_pp + "\n")
+
+        return header
         
     def segment_wave(self, interval, SEGMENT_PATH):
         """
@@ -172,7 +222,7 @@ class SpeechRecording(object):
         out_list = []
         while end_time <= total_duration:
             # create a new Segment with each newly cut segment.
-            segment = Segment(self.name, 
+            segment = Segment(self.name,
                                 snd.extract_part(from_time=start_time, to_time=end_time),
                                 self.age,
                                 self.gender,
@@ -182,7 +232,8 @@ class SpeechRecording(object):
             start_time = end_time
             end_time += interval
         return out_list
-        
+
+
 class Segment(object):
     """
     Segment class. All SpeechRecordings are segmented during preprocessing in order
@@ -216,52 +267,62 @@ class Segment(object):
         FILE_PATH = SAVE_PATH + '%i.wav' % self.identification
         self.wave.save(FILE_PATH, parselmouth.SoundFileFormat.WAV)
         self.file_path = FILE_PATH
-        
+
     def __str__(self):
         return "<Segment - age: %i | gender: %s | ID: %i>" % (self.age_of_speaker, self.gender_of_speaker, self.identification)    
-    
-    
-class AgeClassifier(object):
-    """
-    AgeClassifier class. AgeClassifier in order to predict the age of a speaker.
-    The architecture of this Multi Layer Perceptron (type of NeuralNetwork) is based on an experiment
-    for wine classification (code was distributed in class).
 
-    :param ROOT_PATH:           root path of the system
-    :type ROOT_PATH:            str
-    :param age_mapping:         age mapping in order to translate the output (prediction)
-                                to the corresponding age group i.e. range of age values
-    :param hidden_layer_sizes:  tuple of values indicating the number of neurons
-                                in each hidden layer. default is (30,30,30)
-    :type hidden_layer_sizes:   tuple(int, int, int)
-    :param activation:          activation function used in this neural network.
-                                default value is 'logistic'
-    :type activation:           str
-    :param max_iter:            maximum number of iterations for fitting the NN.
-    :type max_iter:             int
-    """
-    def __init__(self, ROOT_PATH, age_mapping, hidden_layer_sizes=(30,30,30),activation='logistic', max_iter=1000):
-        self.ROOT_PATH = ROOT_PATH
-        self.TRAIN_PATH = self.ROOT_PATH + '/appdata/train/'
-        self.TEST_PATH = self.ROOT_PATH + '/appdata/test/'
-        self.fname_train = glob.glob(self.TRAIN_PATH + 'f_train_num.txt')
-        self.fname_test = glob.glob(self.TEST_PATH + 'f_test_num.txt')
-        self.train_input = np.loadtxt(self.fname_train[0], delimiter=",")
-        self.test_input = np.loadtxt(self.fname_test[0], delimiter=",")
-        self.X_train = self.train_input[:,2:51]   # Training Features
-        self.Y_train = self.train_input[:,0]      # Training Targets
-        self.X_test = self.test_input[:,2:51]     # Testing Features
-        self.Y_test = self.test_input[:,0]        # Testing Targets
-        self.scaler = StandardScaler()
-        self.mlp = MLPClassifier(hidden_layer_sizes=hidden_layer_sizes,activation=activation,max_iter=max_iter)
-        self.predictions = []
+
+class AgeClassifier(object):
+    def __init__(self, root_path, age_mapping, modelname=None, hidden_layer_sizes=(30,30,30), activation='logistic', max_iter=1000, model=None, features=[], gender="m"):
+        self.root_path = root_path
         self.age_mapping = age_mapping
-        # set up the actual MLP by fitting and scaling the data
+        if gender == "m":
+            self.train_df = pd.read_csv(self.root_path + "appdata/train/m_train.csv")
+            self.test_df = pd.read_csv(self.root_path + "appdata/test/m_test.csv")
+        else:
+            self.train_df = pd.read_csv(self.root_path + "appdata/train/f_train.csv")
+            self.test_df = pd.read_csv(self.root_path + "appdata/test/f_test.csv")
+        self.features = features
+        self.train_df = self.select_features(self.train_df)
+        self.test_df = self.select_features(self.test_df)
+        self.X_train, self.Y_train = self.split_target(self.train_df)
+        self.X_test, self.Y_test = self.split_target(self.test_df)
+        self.predictions = []
+        self.scaler = StandardScaler()
         self.scaler.fit(self.X_train)
         self.X_train = self.scaler.transform(self.X_train)
         self.X_test = self.scaler.transform(self.X_test)
-        self.mlp.fit(self.X_train, self.Y_train)
+        self.modelname = modelname
+        self.model = model
+
+        if self.model:
+            print(" + model given, computing predictions with given model")
+            self.mlp = load(self.model)
+        elif not self.model and self.modelname:
+            print(" + no predefined model, fitting a new one with name '%s'" % self.modelname)
+            self.mlp = MLPClassifier(hidden_layer_sizes=hidden_layer_sizes,activation=activation,max_iter=max_iter)
+            self.mlp.fit(self.X_train, self.Y_train)
+            try:
+                os.mkdir("appdata/models/")
+            except FileExistsError:
+                pass
+            dump(self.mlp, "appdata/models/" + self.modelname)
+            print(" + dumped new model named '%s'" % self.modelname)
+        else:
+            print(" + either modelname nor model was given, program terminated")
+            exit()
+
         self.predictions = self.mlp.predict(self.X_test)
+
+    def select_features(self, df):
+        feats = self.features + ["age", "gender", "age_class"]
+        return df.loc[:,feats]
+
+    def split_target(self, df):
+        df = df.dropna()
+        target = df["age_class"]
+        df = df.drop(["age", "age_class","gender"], axis=1)
+        return df.as_matrix(), target.as_matrix()
 
     def print_accuracy_score(self):
         """
@@ -271,7 +332,9 @@ class AgeClassifier(object):
         """
         if self.predictions == []:
             return "you must set up your data before printing out a confusion matrix."
-        print("accuracy:", accuracy_score(self.Y_test, self.predictions, normalize=True, sample_weight=None))
+        acc = accuracy_score(self.Y_test, self.predictions, normalize=True, sample_weight=None)    
+        print("accuracy:", acc)
+        return acc
 
     def predict(self, input_row):
         """
@@ -312,7 +375,8 @@ class AgeClassifier(object):
         :param cmap:        name of the plt.colormap
         :type cmap:         plt.colormap
         """
-        classes = self.age_mapping.keys()
+        # quick hack of classes
+        classes = [0,1,2,3,4]
         cm = confusion_matrix(self.Y_test,self.predictions)
         if normalize:
             cm = cm.astype('float') / cm.sum(axis=1)[:, np.newaxis]
@@ -336,34 +400,4 @@ class AgeClassifier(object):
         plt.tight_layout()
         plt.ylabel("True label")
         plt.xlabel("Predicted label")
-        plt.show()
-
-    def plot_age_group_sizes(self, title='Sizes of age groups used for training', color="black"):
-        """
-        Plot the number of segments used for training for each age group
-        respectively in a single plot (bar chart).
-
-        :param title:       title of the resulting plot
-        :type title:        str
-        :param color:       color, in which the bars will be plotted
-        :type color:        str
-        """
-        d = {}
-        test_data = self.Y_train
-        for i in test_data:
-            i = int(i)
-            try:
-                d[i] += 1
-            except KeyError:
-                d[i] = 1
-
-        plot_values = []
-        for j in range(0, max(d.keys())+1):
-            plot_values.append(d[j])
-
-        plt.bar(range(len(d)), plot_values, align='center', color=color)
-        plt.xticks(range(len(d)), range(0, max(d.keys())+1))
-        plt.xlabel("Age groups")
-        plt.ylabel("Number of samples for testing")
-        plt.title(title)
         plt.show()
