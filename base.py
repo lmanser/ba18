@@ -6,15 +6,15 @@
 
 from Classes import *
 import os
-import re
+# import re
 import pandas as pd
-import subprocess
-import parselmouth
+# import subprocess
+# import parselmouth
 from shutil import rmtree
 import random
 import time
 import numpy as np
-import matplotlib.pyplot as plt
+# import matplotlib.pyplot as plt
 import argparse
 from stats import reverse_mapping
 
@@ -58,7 +58,6 @@ def load_main_data(DB_PATH):
                     
     return recordings
     
-
 def load_additional_data(DB_PATH):
     """
     Load additional sound files (.wav) into system in order to process them later.
@@ -96,6 +95,18 @@ def load_additional_data(DB_PATH):
     return recordings
 
 def update_header(filepath, header):
+    """
+    Replace the existing file header with the newly created one, corresponding
+    to the names of the extracted feature values.
+
+    :param filepath:    path to the file, which header must be changed
+    :type filepath:     str
+    :param header:      header, which will replace the old one
+    :type header:       str
+
+    :return:            no explicit return
+    :type return:       None
+    """
     out_lines = []
     with open(filepath, "r+") as f:
         lines = f.readlines()
@@ -105,6 +116,18 @@ def update_header(filepath, header):
         fout.writelines(out_lines)
 
 def add_age_class_to_data(filepath, age_mapping):
+    """
+    Add age class column to dataframe
+
+    :param filepath:    path to the file, which will be augmented
+    :type filepath:     str
+    :param age_mapping: dataframe containing the age boundaries of each age class
+    :type age_mapping:  pd.DataFrame
+
+    :return:            no explicit return, writes the updated dataframe as
+                        csv to the given filepath
+    :type return:       None
+    """
     rev_age_mapping = reverse_mapping(age_mapping)
     df = pd.read_csv(filepath)
     age_classes = []
@@ -130,11 +153,24 @@ def add_age_class_to_data(filepath, age_mapping):
     df.to_csv(filepath, index=False)
 
 def collect_testing_training_data(filepath, MALE_TRAIN_PATH, MALE_TEST_PATH, FEMALE_TRAIN_PATH, FEMALE_TEST_PATH):
+    """
+    Collects testing and training data from the given data.
+
+    :param filepath:            path to the base file, of which the data will be taken
+    :type filepath:             str
+    :param MALE_TRAIN_PATH:     path to the file containing male training data
+    :type MALE_TRAIN_PATH:      str
+    :param MALE_TEST_PATH:      path to the file containing male testing data
+    :type MALE_TEST_PATH:       str
+    :param FEMALE_TRAIN_PATH:   path to the file containing female training data
+    :type FEMALE_TRAIN_PATH:    str
+    :param FEMALE_TEST_PATH:    path to the file containing female testing data
+    :type FEMALE_TEST_PATH:     str
+    """
     df = pd.read_csv(filepath)
     # split data by gender
     male = df.loc[df["gender"] == 0]
     female = df.loc[df["gender"] == 1]
-    
     # MALE
     n_m = male.shape[0]
     n_test = int(0.2 * n_m)
@@ -144,7 +180,6 @@ def collect_testing_training_data(filepath, MALE_TRAIN_PATH, MALE_TEST_PATH, FEM
         test_rows.append(row[0])
     male_train = male.drop(test_rows)
     # FEMALE
-    
     n_f = female.shape[0]
     n_test = int(0.2 * n_f)
     female_test = female.sample(n=n_test)
@@ -152,7 +187,7 @@ def collect_testing_training_data(filepath, MALE_TRAIN_PATH, MALE_TEST_PATH, FEM
     for row in female_test.iterrows():
         test_rows.append(row[0])
     female_train = female.drop(test_rows)
-
+    # OUTPUT
     print(" + writing testing and training files")
     print(" +   -> %s" % MALE_TRAIN_PATH)
     male_train.to_csv(MALE_TRAIN_PATH, index=False)
@@ -205,10 +240,10 @@ def main():
     APPDATA_PATH = ROOT_PATH + "appdata/"
     TRAIN_PATH = APPDATA_PATH + "train/*.txt"
     TEST_PATH = APPDATA_PATH + "test/*.txt"
-    MALE_TRAIN_PATH = APPDATA_PATH + "train/m_train.txt"
-    FEMALE_TRAIN_PATH = APPDATA_PATH + "train/f_train.txt"
-    MALE_TEST_PATH = APPDATA_PATH + "test/m_test.txt"
-    FEMALE_TEST_PATH = APPDATA_PATH + "test/f_test.txt"
+    MALE_TRAIN_PATH = APPDATA_PATH + "train/m_train.csv"
+    FEMALE_TRAIN_PATH = APPDATA_PATH + "train/f_train.csv"
+    MALE_TEST_PATH = APPDATA_PATH + "test/m_test.csv"
+    FEMALE_TEST_PATH = APPDATA_PATH + "test/f_test.csv"
     SEGMENT_PATH = APPDATA_PATH + "segments/"
     MAPPING_PATH = APPDATA_PATH + "mappings/"
     EXTRACTION_PATH = APPDATA_PATH + "ext/"
