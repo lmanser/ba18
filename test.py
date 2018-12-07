@@ -1,13 +1,12 @@
 #!/usr/bin/python
 #-*- coding: utf-8 -*-
 # Author: Linus Manser, 13-791-132
-# date: 06.03.2018
+# date: 07.12.2018
 # Additional Info: python3 (3.6.2) program
 
-from Classes import AgeClassifier
+from Classes import AgeClassifier, load_class_mapping_pd
 from sets import *
 import os
-from run import load_class_mapping_pd
 import pandas as pd
 from base import add_age_class_to_data
 from Classes import reverse_mapping
