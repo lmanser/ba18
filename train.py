@@ -4,7 +4,8 @@
 # date: 03.12.2018
 # Additional Info: python3 (3.6.2) program
 
-from Classes import AgeClassifier, load_class_mapping_pd
+from Classes import AgeClassifier
+from base import load_class_mapping_pd
 import os
 import re
 import random
