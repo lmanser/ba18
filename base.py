@@ -6,15 +6,10 @@
 
 from Classes import *
 import os
-# import re
 import pandas as pd
-# import subprocess
-# import parselmouth
 from shutil import rmtree
-import random
 import time
 import numpy as np
-# import matplotlib.pyplot as plt
 import argparse
 from stats import reverse_mapping
 
