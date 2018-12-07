@@ -1,7 +1,7 @@
 #!/usr/bin/python
 #-*- coding: utf-8 -*-
 # Author: Linus Manser, 13-791-132
-# date: 06.03.2018
+# date: 03.12.2018
 # Additional Info: python3 (3.6.2) program
 
         
@@ -12,6 +12,10 @@ SPECTRAL_SET = ['F1(Hz)_sdc_1', 'F1(Hz)_sdc_2', 'F1(Hz)_sdc_3', 'F1(Hz)_sdc_4', 
 RHYTHM_SET = ['deltaUV', 'deltaVO', 'meanUV', 'meanVO', 'varcoUV', 'varcoVO', 'speakingrate', 'speakingratio', 'pVO']
 
 def main():
+    """
+    This is the collection of created feature values. These sets are needed for
+    collecting the relevant data when setting up the AgeClassifiers.
+    """
     print(MFCC_SET, SPECTRAL_SET, RHYTHM_SET)
     
 if __name__ == '__main__':
