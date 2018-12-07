@@ -4,12 +4,11 @@
 # date: 07.12.2018
 # Additional Info: python3 (3.6.2) program
 
-from Classes import AgeClassifier, load_class_mapping_pd
+from Classes import AgeClassifier
+from base import add_age_class_to_data, load_class_mapping_pd, reverse_mapping
 from sets import *
 import os
 import pandas as pd
-from base import add_age_class_to_data
-from Classes import reverse_mapping
 
 
 def readd_age_class_to_data(filepath, male_age_mapping, female_age_mapping):
