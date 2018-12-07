@@ -3,9 +3,7 @@
 # Author: Linus Manser, 13-791-132
 # date: 07.12.2018
 # Additional Info: python3 (3.6.2) program
-#                  I decided to add some functions to this file, since most of
-#                  the script blocks are imported from this file anyways
-#                  (such as the Classes defined in this file)
+#                  Collection of Classes used for this project
 
 import parselmouth
 import itertools
@@ -22,62 +20,6 @@ import librosa
 import sidekit
 import time
 from joblib import dump, load
-
-
-def load_class_mapping_pd(MAPPING_FILE_PATH):
-    """
-    loading age class mapping as pandas dataframe
-
-    :param MAPPING_FILE_PATH:   path to the mapping file (within mappings)
-    :type MAPPING_FILE_PATH:    str
-
-    :return:                    dataframe with upper and lower boundaries
-                                of each age class
-    :type return:               pd.DataFrame
-    """
-    names=["age_class", "lowerbound", "upperbound"]
-    df = pd.read_csv(MAPPING_FILE_PATH, sep="\t", names=names)
-    return df
-
-def reverse_mapping(mapping):
-    """
-    function to reverse an age class mapping
-
-    :param mapping: mapping between age class and lower and upper boundary of
-                    the corresponding age class
-    :type mapping:  dict
-
-    :return:        reversed mapping with age as key and corresponding age class
-                    as value
-    :type return:   dict
-    """
-    d = {}
-    for index in mapping.index:
-        for age in range(mapping["lowerbound"].get(index), mapping["upperbound"].get(index)+1):
-            d[age] = index
-    return d
-
-def make_header(indexmap, ignore_list):
-    """
-    function to create the header of the feature extraction file
-
-    :param indexmap:    mapping of feature name and size of the corresponding
-                        vector values
-    :type indexmap:     dict
-    :param ignore_list: list of features to be ignored when creating the header
-    :type ignore_list:  list
-    """
-    header = []
-    for name, numbers in indexmap.items():
-        if name not in ignore_list:
-            lowest_number = numbers[0]
-            for nr in numbers:
-                i = nr - lowest_number + 1
-                fname = name + "_sdc_" + str(i)
-                header.append(fname)
-        else:
-            header.append(name)
-    return header
 
 
 class CSVhandler(object):
