@@ -1,10 +1,10 @@
 #!/usr/bin/python
 #-*- coding: utf-8 -*-
 # Author: Linus Manser, 13-791-132
-# date: 06.03.2018
+# date: 03.12.2018
 # Additional Info: python3 (3.6.2) program
 
-from Classes import AgeClassifier
+from Classes import AgeClassifier, load_class_mapping_pd
 import os
 import re
 import random
@@ -128,30 +128,7 @@ def process_recording(wave_name, extraction_name, RECORDING_PATH, EXTRACTION_PAT
             c += 1
 
 
-def load_class_mapping_pd(MAPPING_FILE_PATH):
-    """
-    loading age class mapping as pandas dataframe
-    """
-    names=["age_class", "lowerbound", "upperbound"]
-    df = pd.read_csv(MAPPING_FILE_PATH, sep="\t", names=names)
-    return df
-    
-def load_class_mapping(MAPPING_FILE_PATH):
-    """
-    Load the extracted Mapping of the computed age groups.
-    :param MAPPING_FILE_PATH:   path to the mapping file (within mappings)
-    :type MAPPING_FILE_PATH:    str
 
-    :return:                    python dictionary with the group index as key
-                                and age boundaries as tuples as value.
-    :type return:               dict
-    """
-    d = {}
-    with open(MAPPING_FILE_PATH, "r") as map:
-        for line in map:
-            l = line.rstrip().split("\t")
-            d[int(l[0])] = (int(l[1]), int(l[2]))
-    return d
 
 def main():
     """
@@ -176,7 +153,6 @@ def main():
     All paths used for this program are relative to the root folder, which is where
     this program is located in.
     """
-    print("Welcome!")
     parser = argparse.ArgumentParser(description="Estimate your age by speaking to me.")
     parser.add_argument("-n", "--norecording",
                         action="store_true",
@@ -210,8 +186,7 @@ def main():
     male_age_mapping = load_class_mapping_pd(MALE_MAPPING_FILE_PATH)
     female_age_mapping = load_class_mapping_pd(FEMALE_MAPPING_FILE_PATH)
     if args.verbose:
-        print("+ loaded age mapping: ", age_mapping)
-        print("+ setting up AgeClassifier (this may take a few seconds)")
+        print("+ setting up AgeClassifiers (this may take a few seconds)")
 
     m_c_m = AgeClassifier(ROOT_PATH, male_age_mapping, modelname="male_m.joblib", features=MFCC_SET, gender="m")
     m_c_s = AgeClassifier(ROOT_PATH, male_age_mapping, modelname="male_s.joblib", features=SPECTRAL_SET, gender="m")
