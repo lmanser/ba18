@@ -26,6 +26,17 @@ from joblib import dump, load
 
 
 def reverse_mapping(mapping):
+    """
+    function to reverse an age class mapping
+
+    :param mapping: mapping between age class and lower and upper boundary of
+                    the corresponding age class
+    :type mapping:  dict
+
+    :return:        reversed mapping with age as key and corresponding age class
+                    as value
+    :type return:   dict
+    """
     d = {}
     for index in mapping.index:
         for age in range(mapping["lowerbound"].get(index), mapping["upperbound"].get(index)+1):
@@ -33,6 +44,15 @@ def reverse_mapping(mapping):
     return d
 
 def make_header(indexmap, ignore_list):
+    """
+    function to create the header of the feature extraction file
+
+    :param indexmap:    mapping of feature name and size of the corresponding
+                        vector values
+    :type indexmap:     dict
+    :param ignore_list: list of features to be ignored when creating the header
+    :type ignore_list:  list
+    """
     header = []
     for name, numbers in indexmap.items():
         if name not in ignore_list:
@@ -53,7 +73,14 @@ class CSVhandler(object):
         
     def cast(self, df, type):
         """
-        casts a panda dataframe into the given type
+        casts and cruedly cleans a panda dataframe into the given type
+
+        :param df:      input dataframe to be casted
+        :type df:       pd.DataFrame
+        :param type:    type of casted pandaframe values
+        :type type:     type
+        :return:        casted dataframe
+        :type return:   pd.DataFrame
         """
         try:
             df = df.astype(type)
@@ -68,6 +95,22 @@ class CSVhandler(object):
         return df
             
     def apply_sdc(self, measurement, indexmap, mode="mean"):
+        """
+        applies shifted-delta-coefficients to a given collection of frame data.
+        SDC convolutes longitudinal data into a reduced stack of dimensions
+
+        :param measurement: extracted measurement values of a feature
+        :type measurement:  pd.DataFrame
+        :param indexmap:    map that allows for linking of the newly created
+                            feature vectors
+        :type indexmap:     dict
+        :param mode:        describes how the remaining values are convoluted
+                            into the one-dimensional vector
+        :type mode:         str
+        :return:            reduced and convoluted shifted delta coefficients
+                            of the given input measurements
+        :type return:       nd.array
+        """
         data = self.df[measurement].values
         data = np.reshape(data, (-1, 1))
         sdc = sidekit.shifted_delta_cepstral(data, d=2, p=3, k=7)
@@ -131,7 +174,30 @@ class SpeechRecording(object):
         """
         return self.segments
     
-    def extract_features(self, interval, outfile_path ,SEGMENT_PATH, EXTRACTION_PATH, PROGRESS_PATH, PROGRESS_FILE_PATH, processed_recordings=[]):
+    def extract_features(self, interval, outfile_path, SEGMENT_PATH, EXTRACTION_PATH, PROGRESS_PATH, PROGRESS_FILE_PATH, processed_recordings=[]):
+        """
+        Extract features from a given SpeechRecording by segmenting it into
+        multiple segments and running the praat script on each segment.
+
+        :param interval:        duration of each segment (in seconds)
+        :type interval:         int
+        :param outfile_path:    path to the output file
+        :type outfile_path:     str
+        :param SEGMENT_PATH:    path to the segment folder
+        :type SEGMENT_PATH:     str
+        :param EXTRACTION_PATH: path to the extraction folder
+        :type EXTRACTION_PATH:  str
+        :param PROGRESS_PATH:   path to the progress folder
+        :type PROGRESS_PATH:    str
+        :param PROGRESS_FILE_PATH:  path to progress file
+        :type PROGRESS_FILE_PATH:   str
+        :param processed_recordings: list of already processed recordings
+        :type processed_recordings:  list
+
+        :return:                header corresponding to the extracted feature
+                                values
+        :type return:           str
+        """
         # remove previous csv and segments, since they are not of use anymore
         try:
             os.mkdir(EXTRACTION_PATH)
@@ -214,6 +280,13 @@ class SpeechRecording(object):
         
     def segment_wave(self, interval, SEGMENT_PATH):
         """
+        Segment the input signal into segments of given length
+
+        :param interval:        duration of segments in seconds
+        :type interval:         int
+        :param SEGMENT_PATH:    path to the segment folder, where the segments
+                                will be saved to
+        :type SEGMENT_PATH:     str
         """
         start_time = 0
         end_time = interval
@@ -237,7 +310,7 @@ class SpeechRecording(object):
 class Segment(object):
     """
     Segment class. All SpeechRecordings are segmented during preprocessing in order
-    to get 3 second long segments over which the feature extraction will run.
+    to get segments over which the feature extraction will run.
 
     :param name_of_recording:   name of the segmented SpeechRecording
     :type name_of_recording:    str
@@ -277,11 +350,11 @@ class AgeClassifier(object):
         self.root_path = root_path
         self.age_mapping = age_mapping
         if gender == "m":
-            self.train_df = pd.read_csv(self.root_path + "appdata/train/m_train.csv")
-            self.test_df = pd.read_csv(self.root_path + "appdata/test/m_test.csv")
+            self.train_df = pd.read_csv(self.root_path + "appdata/train/m_train_3.csv")
+            self.test_df = pd.read_csv(self.root_path + "appdata/test/m_test_3.csv")
         else:
-            self.train_df = pd.read_csv(self.root_path + "appdata/train/f_train.csv")
-            self.test_df = pd.read_csv(self.root_path + "appdata/test/f_test.csv")
+            self.train_df = pd.read_csv(self.root_path + "appdata/train/f_train_3.csv")
+            self.test_df = pd.read_csv(self.root_path + "appdata/test/f_test_3.csv")
         self.features = features
         self.train_df = self.select_features(self.train_df)
         self.test_df = self.select_features(self.test_df)
@@ -315,10 +388,26 @@ class AgeClassifier(object):
         self.predictions = self.mlp.predict(self.X_test)
 
     def select_features(self, df):
+        """
+        Returns feature values of the created classifier
+
+        :param df:      dataframe, from which the feature values will be taken
+        :type df:       pd.DataFrame
+        :return:        filtered dataframe
+        :type return:   pd.DataFrame
+        """
         feats = self.features + ["age", "gender", "age_class"]
         return df.loc[:,feats]
 
     def split_target(self, df):
+        """
+        Splice the target values from the other feature values. Namely age_class.
+
+        :param df:      input dataframe, from which the data will be taken
+        :type df:       pd.DataFrame
+        :return:        tuple(training data, target data)
+        :type return:   (np.ndarray, np.ndarray)
+        """
         df = df.dropna()
         target = df["age_class"]
         df = df.drop(["age", "age_class","gender"], axis=1)
@@ -326,13 +415,13 @@ class AgeClassifier(object):
 
     def print_accuracy_score(self):
         """
-        Return a confusion matrix of the Classifier with the given training/test data.
+        Return a accuracy score of the Classifier with the given training/test data.
 
         :return:            string stating the accuracy of self
         """
         if self.predictions == []:
             return "you must set up your data before printing out a confusion matrix."
-        acc = accuracy_score(self.Y_test, self.predictions, normalize=True, sample_weight=None)    
+        acc = accuracy_score(self.Y_test, self.predictions, normalize=True, sample_weight=None)
         print("accuracy:", acc)
         return acc
 
@@ -359,7 +448,15 @@ class AgeClassifier(object):
         except ValueError as e:
             return e
         return (prediction, "You are estimated to be between %s and %s years old" % (str(self.age_mapping[prediction][0]), str(self.age_mapping[prediction][1])))
-    
+
+    def plot_classification_report(self):
+        """
+        SOURCE: https://scikit-learn.org/stable/modules/generated/sklearn.metrics.classification_report.html#sklearn.metrics.classification_report
+        This function prints and plots a classification report.
+        """
+        cr = classification_report(self.Y_test,self.predictions)
+        print("classification report for %s:" % self.model)
+        print(cr)
     
     def plot_confusion_matrix(self, normalize=True, title='Normalized confusion matrix',
                           cmap=plt.cm.Greys):
@@ -400,4 +497,5 @@ class AgeClassifier(object):
         plt.tight_layout()
         plt.ylabel("True label")
         plt.xlabel("Predicted label")
+        # plt.savefig(self.model[:-7]+".png")
         plt.show()
