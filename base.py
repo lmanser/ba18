@@ -1,7 +1,7 @@
 #!/usr/bin/python
 #-*- coding: utf-8 -*-
 # Author: Linus Manser, 13-791-132
-# date: 06.03.2018
+# date: 07.12.2018
 # Additional Info: python3 (3.6.2) program
 
 from Classes import *
@@ -11,7 +11,6 @@ from shutil import rmtree
 import time
 import numpy as np
 import argparse
-from stats import reverse_mapping
 
 def load_main_data(DB_PATH):
     """
