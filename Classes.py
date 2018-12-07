@@ -1,29 +1,43 @@
 #!/usr/bin/python
 #-*- coding: utf-8 -*-
 # Author: Linus Manser, 13-791-132
-# date: 06.03.2018
+# date: 07.12.2018
 # Additional Info: python3 (3.6.2) program
+#                  I decided to add some functions to this file, since most of
+#                  the script blocks are imported from this file anyways
+#                  (such as the Classes defined in this file)
 
 import parselmouth
 import itertools
 import subprocess
 import os
-import glob
-import parselmouth
 import numpy as np
 import pandas as pd
 from shutil import rmtree
 import matplotlib.pyplot as plt
 from sklearn.preprocessing import StandardScaler
 from sklearn.neural_network import MLPClassifier
-from sklearn import svm
-from sklearn.model_selection import train_test_split, GridSearchCV
 from sklearn.metrics import confusion_matrix, accuracy_score, classification_report
 import librosa
 import sidekit
 import time
 from joblib import dump, load
 
+
+def load_class_mapping_pd(MAPPING_FILE_PATH):
+    """
+    loading age class mapping as pandas dataframe
+
+    :param MAPPING_FILE_PATH:   path to the mapping file (within mappings)
+    :type MAPPING_FILE_PATH:    str
+
+    :return:                    dataframe with upper and lower boundaries
+                                of each age class
+    :type return:               pd.DataFrame
+    """
+    names=["age_class", "lowerbound", "upperbound"]
+    df = pd.read_csv(MAPPING_FILE_PATH, sep="\t", names=names)
+    return df
 
 def reverse_mapping(mapping):
     """
@@ -472,7 +486,7 @@ class AgeClassifier(object):
         :param cmap:        name of the plt.colormap
         :type cmap:         plt.colormap
         """
-        # quick hack of classes
+        # quick hack of classes, can be improved
         classes = [0,1,2,3,4]
         cm = confusion_matrix(self.Y_test,self.predictions)
         if normalize:
@@ -497,5 +511,4 @@ class AgeClassifier(object):
         plt.tight_layout()
         plt.ylabel("True label")
         plt.xlabel("Predicted label")
-        # plt.savefig(self.model[:-7]+".png")
         plt.show()
