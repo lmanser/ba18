@@ -3,7 +3,7 @@
 # Author: Linus Manser, 13-791-132
 # date: 03.12.2018
 # Additional Info: python3 (3.6.2) program
-
+import os
         
 os.chdir("..")
 ROOT_PATH = os.getcwd() + "/"
