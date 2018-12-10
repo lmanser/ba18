@@ -7,6 +7,7 @@
 from Classes import AgeClassifier
 from base import add_age_class_to_data, load_class_mapping_pd, reverse_mapping
 from sets import *
+from paths import *
 import os
 import pandas as pd
 
@@ -128,18 +129,6 @@ def main():
     These models represent a selection of feature sets, which then are going to
     be compared as part of the experiment.
     """
-    os.chdir("..")
-    ROOT_PATH = os.getcwd() + "/"
-    APPDATA_PATH = "appdata/"
-    DATA_PATH = APPDATA_PATH + "fval/"
-    DATA_FILEPATH = DATA_PATH + "extracted_fvals.txt"
-    MALE_TRAIN_PATH = APPDATA_PATH + "train/m_train.csv"
-    FEMALE_TRAIN_PATH = APPDATA_PATH + "train/f_train.csv"
-    MALE_TEST_PATH = APPDATA_PATH + "test/m_test.csv"
-    FEMALE_TEST_PATH = APPDATA_PATH + "test/f_test.csv"
-    FEMALE_MAPPING_FILE_PATH = APPDATA_PATH + "mappings/f_mapping.txt"
-    MALE_MAPPING_FILE_PATH = APPDATA_PATH + "mappings/m_mapping.txt"
-    MODELS_PATH = APPDATA_PATH + "models/"
     d = {0:"MFCC", 1:"SPECTRAL", 2:"RHYTHM", 3:"MFCC + SPECTRAL", 4:"MFCC + RHYTHM", 5:"SPECTRAL + RHYTHM", 6:"MFCC + SPECTRAL + RHYTM"}
     print(" + loading class mappings")
     male_age_mapping = load_class_mapping_pd(MALE_MAPPING_FILE_PATH)

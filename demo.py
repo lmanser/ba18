@@ -17,6 +17,7 @@ import time
 import argparse
 import pandas as pd
 from sets import *
+from paths import *
 
 def record_speech(wave_name, RECORDING_PATH, chunk=1024, format=pyaudio.paInt16, channels=1, rate=16000, record_seconds=3):
     """
@@ -161,15 +162,8 @@ def main():
     if args.verbose:
         print("+ starting Pythia")
         print("+ temporarily changing root directory")
-    os.chdir("..")
     if args.verbose:
         print("+ setting up necessary data paths relative to '%s'" % os.getcwd())
-    ROOT_PATH = os.getcwd() + "/"
-    APPDATA_PATH = ROOT_PATH + "appdata/"
-    RECORDING_PATH = APPDATA_PATH + "recordings/"
-    EXTRACTION_PATH = APPDATA_PATH + "extractions/"
-    FEMALE_MAPPING_FILE_PATH = APPDATA_PATH + "mappings/f_mapping.txt"
-    MALE_MAPPING_FILE_PATH = APPDATA_PATH + "mappings/m_mapping.txt"
     recording_name = "rec.wav"
     extraction_name = "ext.txt"
     if args.verbose:

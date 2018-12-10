@@ -5,12 +5,14 @@
 # Additional Info: python3 (3.6.2) program
 
 from Classes import *
+from paths import *
 import os
 import pandas as pd
 from shutil import rmtree
 import time
 import numpy as np
 import argparse
+
 
 def load_main_data(DB_PATH):
     """
@@ -282,23 +284,6 @@ def main():
     # predefined age groups with their boundaries as tuples
     m_classes = {0:(25,37), 1:(48, 50), 2:(51, 64), 3:(65, 75), 4:(76, 85)}
     f_classes = {0:(25,37), 1:(48, 50), 2:(51, 64), 3:(65, 75), 4:(76, 85)}
-
-    os.chdir("..")
-    ROOT_PATH = os.getcwd() + "/"
-    DB_PATH = ROOT_PATH + "AgeingDatabaseReleaseII/"
-    APPDATA_PATH = ROOT_PATH + "appdata/"
-    TRAIN_PATH = APPDATA_PATH + "train/*.txt"
-    TEST_PATH = APPDATA_PATH + "test/*.txt"
-    MALE_TRAIN_PATH = APPDATA_PATH + "train/m_train.csv"
-    FEMALE_TRAIN_PATH = APPDATA_PATH + "train/f_train.csv"
-    MALE_TEST_PATH = APPDATA_PATH + "test/m_test.csv"
-    FEMALE_TEST_PATH = APPDATA_PATH + "test/f_test.csv"
-    SEGMENT_PATH = APPDATA_PATH + "segments/"
-    MAPPING_PATH = APPDATA_PATH + "mappings/"
-    EXTRACTION_PATH = APPDATA_PATH + "ext/"
-    FVAL_PATH = APPDATA_PATH + "fval/"
-    PROGRESS_PATH = APPDATA_PATH + "progress/"
-    PROGRESS_FILE_PATH = PROGRESS_PATH + "progress.txt"
     # check if there are existing training/testing files. if this is the case,
     # we don't want to reprocess all extractions made before.
     if not os.path.exists(TRAIN_PATH) and not os.path.exists(TEST_PATH):

@@ -10,6 +10,7 @@ import os
 import sys
 import pandas as pd
 from sets import *
+from paths import *
 
 def main():
     """
@@ -25,14 +26,6 @@ def main():
     """
     print("+ starting Pythia")
     print("+ temporarily changing root directory")
-    os.chdir("..")
-    print("+ setting up necessary data paths relative to '%s'" % os.getcwd())
-    ROOT_PATH = os.getcwd() + "/"
-    APPDATA_PATH = ROOT_PATH + "appdata/"
-    RECORDING_PATH = APPDATA_PATH + "recordings/"
-    EXTRACTION_PATH = APPDATA_PATH + "extractions/"
-    FEMALE_MAPPING_FILE_PATH = APPDATA_PATH + "mappings/f_mapping.txt"
-    MALE_MAPPING_FILE_PATH = APPDATA_PATH + "mappings/m_mapping.txt"
     print("+ loading mapping of age groups from '%s'" % MAPPING_FILE_PATH)
     male_age_mapping = load_class_mapping_pd(MALE_MAPPING_FILE_PATH)
     female_age_mapping = load_class_mapping_pd(FEMALE_MAPPING_FILE_PATH)
