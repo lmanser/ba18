@@ -306,11 +306,11 @@ class AgeClassifier(object):
         self.root_path = root_path
         self.age_mapping = age_mapping
         if gender == "m":
-            self.train_df = pd.read_csv(self.root_path + "appdata/train/m_train_3.csv")
-            self.test_df = pd.read_csv(self.root_path + "appdata/test/m_test_3.csv")
+            self.train_df = pd.read_csv(self.root_path + "appdata/train/m_train.csv")
+            self.test_df = pd.read_csv(self.root_path + "appdata/test/m_test.csv")
         else:
-            self.train_df = pd.read_csv(self.root_path + "appdata/train/f_train_3.csv")
-            self.test_df = pd.read_csv(self.root_path + "appdata/test/f_test_3.csv")
+            self.train_df = pd.read_csv(self.root_path + "appdata/train/f_train.csv")
+            self.test_df = pd.read_csv(self.root_path + "appdata/test/f_test.csv")
         self.features = features
         self.train_df = self.select_features(self.train_df)
         self.test_df = self.select_features(self.test_df)
