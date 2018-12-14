@@ -1,11 +1,15 @@
 #!/usr/bin/python
 #-*- coding: utf-8 -*-
 # Author: Linus Manser, 13-791-132
-# date: 03.12.2018
+# date: 13.12.2018
 # Additional Info: python3 (3.6.2) program
+# DISCLAMER: This script is only for demonstration purposes. Due to some hacks
+# which increase robustness of the script, the performance of the classifier is
+# lowered.
 
-from Classes import AgeClassifier
-from base import load_class_mapping_pd
+from Classes import AgeClassifier, CSVhandler
+from base import load_class_mapping_pd, make_header
+import librosa
 import os
 import re
 import random
@@ -18,6 +22,9 @@ import argparse
 import pandas as pd
 from sets import *
 from paths import *
+from shutil import rmtree
+import sidekit
+import numpy as np
 
 def record_speech(wave_name, RECORDING_PATH, chunk=1024, format=pyaudio.paInt16, channels=1, rate=16000, record_seconds=3):
     """
@@ -49,7 +56,8 @@ def record_speech(wave_name, RECORDING_PATH, chunk=1024, format=pyaudio.paInt16,
     try:
         os.mkdir(RECORDING_PATH)
     except FileExistsError:
-        pass
+        rmtree(RECORDING_PATH)
+        os.mkdir(RECORDING_PATH)
     # set up recording environment
     p = pyaudio.PyAudio()
     wavefile = wave.open(RECORDING_PATH + wave_name, "wb")
@@ -75,61 +83,37 @@ def record_speech(wave_name, RECORDING_PATH, chunk=1024, format=pyaudio.paInt16,
     stream.close()
     p.terminate()
 
-def process_recording(wave_name, extraction_name, RECORDING_PATH, EXTRACTION_PATH):
+def process_recording_2(wave_name, RECORDING_PATH, EXTRACTION_PATH, extraction_name="recording_values.csv", gender="m"):
     """
-    Process the recorded audio signal. This is done with the same praat-script as
-    used for processing all training/test data.
-
-    :param wave_name:       name of the audio signal
-    :type wave_name:        str
-    :param extraction_name: name of the file, in which the processed value of this
-                            recording are stored
-    :type extraction_name:  str
-    :param RECORDING_PATH:  path to recorded file
-    :type RECORDING_PATH:   str
-    :param EXTRACTION_PATH: path to the extraction file
-    :type EXTRACTION_PATH:  str
-
-    :return:                extracted input values for the classification
-    :type return:           np.ndarray
     """
+    # remove previous csv and segments, since they are not of use anymore
     try:
         os.mkdir(EXTRACTION_PATH)
     except FileExistsError:
-        pass
-    # execute the featureExtraction.praat file within praat in order to
-    # extract the relevant features
-    PRAAT_PATH = '/Applications/Praat.app/Contents/MacOS/Praat'
-    while True:
-        try:
-            subprocess.call([PRAAT_PATH, '--run', 'code/featureExtraction.praat', '-25', '2', '0.3', '0', RECORDING_PATH, EXTRACTION_PATH, extraction_name])
-            break
-        except FileNotFoundError:
-            # In case the given installation path of praat is wrong, let user
-            # enter the correct path. This path will only be saved temporarily.
-            PRAAT_PATH = input("The assumed installation path of praat was '%s'\nif this is not the case, please enter your own path to the installed praat version you want to use:\n> " % PRAAT_PATH)
+        rmtree(EXTRACTION_PATH)
+        os.mkdir(EXTRACTION_PATH)
+    # gather all data and set up correct table for each segment
+    try:
+        subprocess.check_call(['/Applications/Praat.app/Contents/MacOS/Praat', '--run', 'code/featureExtraction.praat', '-25', '2', '0.3', '0', RECORDING_PATH, EXTRACTION_PATH, wave_name[:-4]])
+    except subprocess.CalledProcessError:
+        # discard segment if subprocess throws errors due to invalid data
+        print(" ! Segment not processed, due to invalid values -> please try again.")
+        exit()
+    endings = ["_formanttable.csv", "_harmtable.csv", "_pitchtable.csv", "_rest.csv", "_spectable.csv"]
+    # since MFCC data is not extracted in the best performing models (S+R), it
+    # is left out for this demonstration.
+    feature_values = []
+    for ending in endings:
+        d = CSVhandler(EXTRACTION_PATH + wave_name[:-4] + ending)
+        if ending != "_rest.csv":
+            for f in list(d.df):
+                feature_values += d.apply_sdc(f)
+        else:
+            for f in list(d.df):
+                if f != "soundname":
+                    feature_values.append(d.df[f].values[0])
 
-    with open(EXTRACTION_PATH + extraction_name, "r") as ext_file:
-        c = 0
-        for line in ext_file:
-            if c == 1:
-                if not re.search(r"--undefined--", line):
-                    # clean up the row (discard name of recording etc.)
-                    input_row = line.rstrip().split(",")[1:]
-                    # read row in order to set up the correct data structure and
-                    # shape as input for the classifier
-                    input_row = np.loadtxt(input_row, delimiter=",")
-                    input_row = input_row.reshape(1,-1)
-                    return input_row
-                else:
-                    # in case of --undefined-- data in the recording
-                    # this can happen when the recording is not done properly
-                    # e.g. voice is not loud enough, etc.
-                    print("something went terribly wrong during the feature extraction, please try again.\nmake sure there is some audio input.")
-                    exit()
-            c += 1
-
-
+    return feature_values
 
 
 def main():
@@ -167,13 +151,45 @@ def main():
     recording_name = "rec.wav"
     extraction_name = "ext.txt"
     if args.verbose:
-        print("+ loading mapping of age groups from '%s'" % MAPPING_FILE_PATH)
+        print("+ loading mapping of age groups from '%s'" % MALE_MAPPING_FILE_PATH)
     male_age_mapping = load_class_mapping_pd(MALE_MAPPING_FILE_PATH)
     female_age_mapping = load_class_mapping_pd(FEMALE_MAPPING_FILE_PATH)
     if args.verbose:
         print("+ setting up AgeClassifiers (this may take a few seconds)")
 
-    m = AgeClassifier(ROOT_PATH, male_age_mapping, model=MODELS_PATH+"male_m_s.joblib", features=MFCC_SET, gender="m")
-    f = AgeClassifier(ROOT_PATH, male_age_mapping, model=MODELS_PATH+"female_s_r.joblib", features=MFCC_SET, gender="m")
+    gender = input("What is your gender? (m/f)\n> ")
+    c = None
+    while True:
+        if gender.lower() == "m":
+            # MALE
+            if args.verbose:
+                print(" + Setting up male classifier")
+            c = AgeClassifier(ROOT_PATH, male_age_mapping, model=MODELS_PATH+"male_s_r.joblib", gender="m")
+            break
+        elif gender.lower() == "f":
+            # FEMALE
+            if args.verbose:
+                print(" + Setting up female classifier")
+            c = AgeClassifier(ROOT_PATH, female_age_mapping, model=MODELS_PATH+"female_s_r.joblib", gender="f")
+            break
+        else:
+            gender = input("Please enter a valid gender (m/f)\n> ")
+    duration = 3
+    wave_name = "1337.wav"
+    if not args.norecording:
+        start = input(" + please press enter to start recording your voice for %.1f seconds (q/quit to abort)\n> " % duration)
+        if start == "q" or start == "quit":
+            print(" ! quit command given, terminating program")
+            exit()
+        else:
+            record_speech(wave_name, RECORDING_PATH, chunk=1024, format=pyaudio.paInt16, channels=1, rate=16000, record_seconds=duration)
+            feature_values = process_recording_2(wave_name, RECORDING_PATH, EXTRACTION_PATH, extraction_name=extraction_name, gender="m")
+
+    else:
+        feature_values = process_recording_2(wave_name, RECORDING_PATH, EXTRACTION_PATH, extraction_name=extraction_name)
+
+    feature_values = np.asarray(feature_values).reshape(1,-1)
+    print(" > " + c.predict(feature_values)[1])
+
 if __name__ == '__main__':
     main()
