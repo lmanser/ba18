@@ -50,7 +50,7 @@ class CSVhandler(object):
             df = df.astype(type)
         return df
             
-    def apply_sdc(self, measurement, indexmap, mode="mean"):
+    def apply_sdc(self, measurement, indexmap=None, mode="mean"):
         """
         applies shifted-delta-coefficients to a given collection of frame data.
         SDC convolutes longitudinal data into a reduced stack of dimensions
@@ -77,8 +77,9 @@ class CSVhandler(object):
             sdc_data = np.var(sdc, axis=0).tolist()
         # update indexmap in order to find the correct columns later on
         cols = len(sdc_data)
-        first_index = max(map(max, indexmap.values())) + 1
-        indexmap[measurement] = [i for i in range(first_index, first_index + cols)]
+        if indexmap:
+            first_index = max(map(max, indexmap.values())) + 1
+            indexmap[measurement] = [i for i in range(first_index, first_index + cols)]
         return sdc_data
     
     def tolist(self):
@@ -213,7 +214,7 @@ class SpeechRecording(object):
                 d = CSVhandler(EXTRACTION_PATH + str(identification) + ending)
                 if ending != "_rest.csv":
                     for f in list(d.df):
-                        feature_values += d.apply_sdc(f, indexmap)
+                        feature_values += d.apply_sdc(f, indexmap=indexmap)
                 else:
                     for f in list(d.df):
                         ignore_list.append(f)
@@ -305,22 +306,23 @@ class AgeClassifier(object):
     def __init__(self, root_path, age_mapping, modelname=None, hidden_layer_sizes=(30,30,30), activation='logistic', max_iter=1000, model=None, features=[], gender="m"):
         self.root_path = root_path
         self.age_mapping = age_mapping
-        if gender == "m":
-            self.train_df = pd.read_csv(self.root_path + "appdata/train/m_train.csv")
-            self.test_df = pd.read_csv(self.root_path + "appdata/test/m_test.csv")
-        else:
-            self.train_df = pd.read_csv(self.root_path + "appdata/train/f_train.csv")
-            self.test_df = pd.read_csv(self.root_path + "appdata/test/f_test.csv")
         self.features = features
-        self.train_df = self.select_features(self.train_df)
-        self.test_df = self.select_features(self.test_df)
-        self.X_train, self.Y_train = self.split_target(self.train_df)
-        self.X_test, self.Y_test = self.split_target(self.test_df)
-        self.predictions = []
-        self.scaler = StandardScaler()
-        self.scaler.fit(self.X_train)
-        self.X_train = self.scaler.transform(self.X_train)
-        self.X_test = self.scaler.transform(self.X_test)
+        if self.features != []:
+            if gender == "m":
+                self.train_df = pd.read_csv(self.root_path + "appdata/train/m_train.csv")
+                self.test_df = pd.read_csv(self.root_path + "appdata/test/m_test.csv")
+            else:
+                self.train_df = pd.read_csv(self.root_path + "appdata/train/f_train.csv")
+                self.test_df = pd.read_csv(self.root_path + "appdata/test/f_test.csv")
+            self.train_df = self.select_features(self.train_df)
+            self.test_df = self.select_features(self.test_df)
+            self.X_train, self.Y_train = self.split_target(self.train_df)
+            self.X_test, self.Y_test = self.split_target(self.test_df)
+            self.predictions = []
+            self.scaler = StandardScaler()
+            self.scaler.fit(self.X_train)
+            self.X_train = self.scaler.transform(self.X_train)
+            self.X_test = self.scaler.transform(self.X_test)
         self.modelname = modelname
         self.model = model
 
@@ -341,7 +343,8 @@ class AgeClassifier(object):
             print(" + either modelname nor model was given, program terminated")
             exit()
 
-        self.predictions = self.mlp.predict(self.X_test)
+        if self.features != []:
+            self.predictions = self.mlp.predict(self.X_test)
 
     def select_features(self, df):
         """
@@ -403,7 +406,7 @@ class AgeClassifier(object):
             prediction = int(self.mlp.predict(input_row)[0])
         except ValueError as e:
             return e
-        return (prediction, "You are estimated to be between %s and %s years old" % (str(self.age_mapping[prediction][0]), str(self.age_mapping[prediction][1])))
+        return (prediction, "You are estimated to be between %s and %s years old" % (str(self.age_mapping.loc[prediction, "lowerbound"]), str(self.age_mapping.loc[prediction, "upperbound"])))
 
     def plot_classification_report(self):
         """
