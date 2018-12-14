@@ -31,7 +31,7 @@ def main():
     This is the collection of created paths. These paths are needed for
     collecting the relevant data when setting up the system.
     """
-    print("Hello form paths.py")
+    print("Hello from paths.py")
     
 if __name__ == '__main__':
     main()
