@@ -2,7 +2,7 @@
 age classification program
 
 # file structure
-this file structure is necessary in order to run the program properly. If using the AgeingDatabaseReleaseII (not necessary if models are given), the structure is used "as-is". Meaning the structure when unzipping the downladed .zip file of the database doesn't have to be changed after unzipping.
+this file structure is necessary in order to run the program properly. If using the TCDSA database (not necessary if models are given), the structure is used "as-is". Meaning the file structure of the database doesn't have to be changed after unzipping.
 
 AgeingDatabaseReleaseII/
 	+ TCDSA_additional/
