@@ -303,6 +303,35 @@ class Segment(object):
 
 
 class AgeClassifier(object):
+    """
+    AgeClassifier class. Creates a classifier instance with the given data.
+    The created classifier is a Multi-Layer Perceptron (MLP) Classifier.
+    Depending on whether a modelname (no model loaded) or model (model given)
+    is given, the initialisation of the instance is different. If a model is
+    given, it will be used to fit the classifier. If only a modelname is given,
+    the AgeClassifier instance will create and save a new model.
+
+    :param root_path:           path to the root of the system, since it relies
+                                on the existence of training and testing or
+                                model files.
+    :type root_path:            str
+    :param age_mapping:         age mapping
+    :type age_mapping:          pd.DataFrame
+    :param modelname:           if no model was given, calculate a new one with this name
+    :type modelname:            str
+    :param hidden_layer_sizes:  tuple of hidden layer sizes.
+    :type hidden_layer_sizes:   tuple
+    :param activation:          activation function used in the nodes of the NN
+    :type activation:           str
+    :param max_iter:            maximum number of fitting iterations
+    :type max_iter:             int
+    :param model:               name of the model that is used for classification
+    :type model:                str
+    :param features:            list of feature names
+    :type features:             list
+    :param gender:              gender tag ("m" or "f")
+    :type gender:               str
+    """
     def __init__(self, root_path, age_mapping, modelname=None, hidden_layer_sizes=(30,30,30), activation='logistic', max_iter=1000, model=None, features=[], gender="m"):
         self.root_path = root_path
         self.age_mapping = age_mapping
