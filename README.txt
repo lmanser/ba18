@@ -26,7 +26,22 @@ code/
  	+ train.py
 	+ featureExtraction.praat
 	
-# usage
+# demo
 In order to run the program for demonstration, change your working directory to ~/code/ and type:
 
-	python3 demo.py
+	$ python3 demo.py
+	
+# full usage
+In order to be able to run the whole system, the TCSDA data at the described location (see above) is necessary. Once the data is at the correct location, the order of operations is the following:
+
+1) Feature segmentation and extraction (warning: takes about ~10 hours with the TCSDA data):
+
+	$ python3 base.py
+
+2) Computation of classifier models:
+
+	$ python3 train.py
+
+3) Evaluation of the trained models:
+
+	$ python3 test.py
