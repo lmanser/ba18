@@ -24,7 +24,7 @@ def main():
     All paths used for this program are relative to the root folder, which is where
     this program is located in.
     """
-    print("+ starting Pythia")
+    print("+ starting train.py")
     print("+ temporarily changing root directory")
     print("+ loading mapping of age groups from '%s'" % MAPPING_FILE_PATH)
     male_age_mapping = load_class_mapping_pd(MALE_MAPPING_FILE_PATH)
