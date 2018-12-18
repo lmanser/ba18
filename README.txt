@@ -1,5 +1,5 @@
 # BA18 classification system
-age classification program
+Python3 age classification program.
 
 # file structure
 this file structure is necessary in order to run the program properly.
