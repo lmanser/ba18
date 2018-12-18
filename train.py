@@ -26,7 +26,7 @@ def main():
     """
     print("+ starting train.py")
     print("+ temporarily changing root directory")
-    print("+ loading mapping of age groups from '%s'" % MAPPING_FILE_PATH)
+    print("+ loading mapping of age groups from '%s'" % MAPPING_PATH)
     male_age_mapping = load_class_mapping_pd(MALE_MAPPING_FILE_PATH)
     female_age_mapping = load_class_mapping_pd(FEMALE_MAPPING_FILE_PATH)
     print("+ setting up AgeClassifiers (this may take a few seconds)")
