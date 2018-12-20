@@ -287,7 +287,7 @@ def main():
     # check if there are existing training/testing files. if this is the case,
     # we don't want to reprocess all extractions made before.
     if not os.path.exists(TRAIN_PATH) and not os.path.exists(TEST_PATH):
-        if input("There is neither training or testing data available\ndo you want to compute new data? (y/n)\nThis will take a long time (around 7 days)\n> ") != "n":
+        if input("There is neither training or testing data available\ndo you want to compute new data? (y/n)\nThis will take a long time (around 8-10 hours)\n> ") != "n":
             start_t = time.time()
             # load data
             print(" + loading main data")
