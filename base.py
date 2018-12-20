@@ -286,7 +286,7 @@ def main():
     f_classes = {0:(25,37), 1:(48, 50), 2:(51, 64), 3:(65, 75), 4:(76, 85)}
     # check if there are existing training/testing files. if this is the case,
     # we don't want to reprocess all extractions made before.
-    if not os.path.exists(TRAIN_PATH) and not os.path.exists(TEST_PATH):
+    if not os.path.exists(MALE_TRAIN_PATH) and not os.path.exists(MALE_TEST_PATH):
         if input("There is neither training or testing data available\ndo you want to compute new data? (y/n)\nThis will take a long time (around 8-10 hours)\n> ") != "n":
             start_t = time.time()
             # load data
@@ -354,6 +354,8 @@ def main():
             print("elapsed time: %s s" % (end_t - start_t))
         else:
             print("program closed")
+    else:
+        print(" + training and testing data given, no need to recalculate")
 
 if __name__ == '__main__':
     main()
